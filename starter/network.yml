@@ -1,7 +1,24 @@
+AWSTemplateFormatVersion: '2010-09-09'
 Description: CD12352 - Infrastructure as Code Project - Network
 
 Parameters:
-  # Add your parameters here
+  VpcCidr:
+    Description: Enter the CIDR block for the VPC
+    Type: String
+  #   Default: 10.0.0.0/16
 
 Resources:
-  # Add your resources here
+  MyVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+Outputs:
+  VpcId:
+    Description: The VPC ID
+    Value: !Ref MyVPC
