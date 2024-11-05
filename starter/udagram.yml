@@ -1,14 +1,39 @@
 Description: CD12352 - Infrastructure as Code Project - Udagram
 
 Parameters:
-  # Add your parameters here
+  PriSubnetCidr1:
+    Description: Enter the CIDR block for private subnet 1
+    Type: String
+  PriSubnetCidr2:
+    Description: Enter the CIDR block for private subnet 2
+    Type: String
+  #   Default: 10.0.0.0/16
+  AZID1:
+    Description: Availabity-zone 1
+    Type: String
+  AZID2:
+    Description: Availabity-zone 2
+    Type: String
+  InstanceType:
+    Description: Instance type of EC2
+    Type: String
+    Default: t2.micro
+  NetworkStackName:
+    Description: Stack name for importing
+    Type: String
+    Default: NetworkStack
+  LaunchTLName:
+    Description: Launch template name
+    Type: String
+    Default: UdagramStack-launch-template
 
 Resources:
   # Add your resources here
   # We include a portion of the LaunchTemplate resource so you can use the UserData.
   WebAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
-    Properties: 
+    Properties:
+      LaunchTemplateName: !Ref LaunchTLName
       LaunchTemplateData:
         UserData:
           Fn::Base64: |
@@ -16,3 +41,28 @@ Resources:
             apt-get update -y
             sudo apt-get install nginx -y
             service nginx start
+  ###------- Autoscaling Group
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: 
+      - WebAppLaunchTemplate
+    Properties:
+      AutoScalingGroupName: AutoScalingGroup
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebAppLaunchTemplate
+        # LaunchTemplateName: !Ref ${LaunchTLName}
+        Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
+      # AvailabilityZones: 
+      #   - AZID1
+      #   - AZID2
+      DesiredCapacity: 2
+      DesiredCapacityType: units
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Sub "${NetworkStackName}-PrivateSubnets"
+        # - Fn::ImportValue:
+        #     'Fn::Sub': '${NetworkStackName}-PrivateSubnet1'
+        # - !Ref PrivateSubnet1
+        # - !Ref PrivateSubnet2
+      MaxSize: 4
+      MinSize: 2

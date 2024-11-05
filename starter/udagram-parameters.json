@@ -1,6 +1,22 @@
 [
 	{
-		"ParameterKey": "Add you parameters here",
-		"ParameterValue": "Add you parameters here"
+		"ParameterKey": "PriSubnetCidr1",
+		"ParameterValue": "10.0.20.0/24"
+	},
+	{
+		"ParameterKey": "PriSubnetCidr2",
+		"ParameterValue": "10.0.21.0/24"
+	},
+	{
+		"ParameterKey": "AZID1",
+		"ParameterValue": "us-east-1a"
+	},
+	{
+		"ParameterKey": "AZID2",
+		"ParameterValue": "us-east-1b"
+	},
+	{
+		"ParameterKey": "InstanceType",
+		"ParameterValue": "t2.micro"
 	}
 ]
