@@ -26,21 +26,41 @@ Parameters:
     Description: Launch template name
     Type: String
     Default: UdagramStack-launch-template
+  KeyPairName:
+    Description: Key pair 
+    Type: String
+    Default: UdagramKeyPair
+
 
 Resources:
-  # Add your resources here
-  # We include a portion of the LaunchTemplate resource so you can use the UserData.
+  # --------- S3 bucket
+
+  # ----- Key pair
+  KeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: !Ref KeyPairName
+      KeyType: ed25519
+      PublicKeyMaterial: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKl7LnHegxxeLA+A9hBmq/sZKoPUZp5zWUtxShUzCaTP tungplatin@gmail.com
+
+  #----------- EC2 Launch Template
   WebAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateName: !Ref LaunchTLName
       LaunchTemplateData:
+        InstanceType: t2.micro
+        ImageId: ami-0866a3c8686eaeeba   # ubuntu image
+        KeyName: !Ref KeyPairName
+        # SecurityGroupIds:
+        #   - # wait
         UserData:
           Fn::Base64: |
             #!/bin/bash
             apt-get update -y
             sudo apt-get install nginx -y
             service nginx start
+
   ###------- Autoscaling Group
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -50,19 +70,11 @@ Resources:
       AutoScalingGroupName: AutoScalingGroup
       LaunchTemplate:
         LaunchTemplateId: !Ref WebAppLaunchTemplate
-        # LaunchTemplateName: !Ref ${LaunchTLName}
         Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
-      # AvailabilityZones: 
-      #   - AZID1
-      #   - AZID2
       DesiredCapacity: 2
       DesiredCapacityType: units
       VPCZoneIdentifier:
         - Fn::ImportValue:
             !Sub "${NetworkStackName}-PrivateSubnets"
-        # - Fn::ImportValue:
-        #     'Fn::Sub': '${NetworkStackName}-PrivateSubnet1'
-        # - !Ref PrivateSubnet1
-        # - !Ref PrivateSubnet2
       MaxSize: 4
       MinSize: 2
