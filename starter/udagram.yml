@@ -34,6 +34,18 @@ Parameters:
 
 Resources:
   # --------- S3 bucket
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub udacity-${AWS::AccountId}-bucket-20241106
+      Tags:
+        - Key: Name
+          Value: !Sub udacity-${AWS::AccountId}-bucket-20241106
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   # ----- Key pair
   KeyPair:

@@ -1,7 +1,7 @@
 # aws cloudformation validate-template --profile udacity --template-body file://udagram.yml;
 
 
-aws cloudformation update-stack \
+aws cloudformation create-stack \
     --profile udacity \
     --template-body file://udagram.yml \
     --stack-name UdagramStack \
