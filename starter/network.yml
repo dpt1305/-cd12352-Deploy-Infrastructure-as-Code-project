@@ -167,6 +167,8 @@ Outputs:
   VpcId:
     Description: The VPC ID
     Value: !Ref NetworkVpc
+    Export: 
+      Name: !Sub ${AWS::StackName}-VpcId
   PublicSubnet1:
     Description: The public subnet 1
     Value: !Ref PublicSubnet1
