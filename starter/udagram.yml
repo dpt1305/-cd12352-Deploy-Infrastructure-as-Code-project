@@ -33,6 +33,45 @@ Parameters:
 
 
 Resources:
+  # ------- SG for Loadbalancer
+  # EC2SecurityGr:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupDescription: For EC2 launch template
+  #     GroupName: UdaSG
+  #     SecurityGroupEgress: 
+  #       CidrIp: String
+  #       Description: Outbound of EC2
+  #       DestinationPrefixListId: String
+  #       DestinationSecurityGroupId: String
+  #       FromPort: Integer
+  #       IpProtocol: String
+  #       ToPort: Integer
+  #     SecurityGroupIngress: 
+  #       - Ingress
+  #     Tags: 
+  #       - Tag
+  #     VpcId: 
+  #       - Fn::ImportValue:
+  #           !Sub "${NetworkStackName}-VpcId"
+
+# Loadbalancer
+  # LoadBalancer:
+  #   Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  #   Properties:
+  #     IpAddressType: String
+  #     LoadBalancerAttributes: 
+  #       - LoadBalancerAttribute
+  #     Name: uda-loadbalancer
+  #     SecurityGroups: 
+  #       - String
+  #     Subnets: 
+  #       - Fn::ImportValue:
+  #         !Sub "${NetworkStackName}-PublicSubnet1"
+  #       - Fn::ImportValue:
+  #         !Sub "${NetworkStackName}-PublicSubnet2"
+  #     Type: application 
+
   # --------- S3 bucket
   S3Bucket:
     Type: AWS::S3::Bucket
