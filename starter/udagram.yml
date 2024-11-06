@@ -55,6 +55,28 @@ Resources:
       KeyType: ed25519
       PublicKeyMaterial: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKl7LnHegxxeLA+A9hBmq/sZKoPUZp5zWUtxShUzCaTP tungplatin@gmail.com
 
+  #------ EC2 Security Group:
+  # EC2SecurityGr:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupDescription: For EC2 launch template
+  #     GroupName: UdaSG
+  #     SecurityGroupEgress: 
+  #       CidrIp: String
+  #       Description: Outbound of EC2
+  #       DestinationPrefixListId: String
+  #       DestinationSecurityGroupId: String
+  #       FromPort: Integer
+  #       IpProtocol: String
+  #       ToPort: Integer
+  #     SecurityGroupIngress: 
+  #       - Ingress
+  #     Tags: 
+  #       - Tag
+  #     VpcId: 
+  #       - Fn::ImportValue:
+  #           !Sub "${NetworkStackName}-VpcId"
+
   #----------- EC2 Launch Template
   WebAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
