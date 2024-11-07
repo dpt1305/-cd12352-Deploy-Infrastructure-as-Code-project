@@ -34,52 +34,55 @@ Parameters:
 
 Resources:
   # ------- SG for Loadbalancer
-  # EC2SecurityGr:
-  #   Type: AWS::EC2::SecurityGroup
-  #   Properties:
-  #     GroupDescription: For EC2 launch template
-  #     GroupName: UdaSG
-  #     SecurityGroupEgress: 
-  #       CidrIp: String
-  #       Description: Outbound of EC2
-  #       DestinationPrefixListId: String
-  #       DestinationSecurityGroupId: String
-  #       FromPort: Integer
-  #       IpProtocol: String
-  #       ToPort: Integer
-  #     SecurityGroupIngress: 
-  #       - Ingress
-  #     Tags: 
-  #       - Tag
-  #     VpcId: 
-  #       - Fn::ImportValue:
-  #           !Sub "${NetworkStackName}-VpcId"
+  LBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: For EC2 launch template
+      GroupName: UdaSG-LB
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:  # Outbound rules
+        - IpProtocol: "-1"  # -1 allows all protocols
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0  # Allows all outbound traffic
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${NetworkStackName}-VpcId"
+      Tags: 
+        - Key: Name
+          Value: UdaSG-LB
 
-# Loadbalancer
-  # LoadBalancer:
-  #   Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-  #   Properties:
-  #     IpAddressType: String
-  #     LoadBalancerAttributes: 
-  #       - LoadBalancerAttribute
-  #     Name: uda-loadbalancer
-  #     SecurityGroups: 
-  #       - String
-  #     Subnets: 
-  #       - Fn::ImportValue:
-  #         !Sub "${NetworkStackName}-PublicSubnet1"
-  #       - Fn::ImportValue:
-  #         !Sub "${NetworkStackName}-PublicSubnet2"
-  #     Type: application 
+
+  # Loadbalancer
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Name: uda-loadbalancer
+      SecurityGroups: 
+        - !Ref LBSG
+      Subnets: 
+        - Fn::ImportValue:
+            !Sub "${NetworkStackName}-PublicSubnet1"
+        - Fn::ImportValue:
+            !Sub "${NetworkStackName}-PublicSubnet2"
+      Type: application 
+      # Tags:
+      #   - Key: Name
+      #     Value: uda-loadbalancer
 
   # --------- S3 bucket
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub udacity-${AWS::AccountId}-bucket-20241106
+      BucketName: !Sub udacity-${AWS::AccountId}-bucket-20241107
       Tags:
         - Key: Name
-          Value: !Sub udacity-${AWS::AccountId}-bucket-20241106
+          Value: !Sub udacity-${AWS::AccountId}-bucket-20241107
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -92,62 +95,107 @@ Resources:
     Properties:
       KeyName: !Ref KeyPairName
       KeyType: ed25519
-      PublicKeyMaterial: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKl7LnHegxxeLA+A9hBmq/sZKoPUZp5zWUtxShUzCaTP tungplatin@gmail.com
+      PublicKeyMaterial: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6+CWWhzU+MbQSAeAz4LCUXf8rPGbIzrAs236yigVWG tungplatin@gmail.com
 
   #------ EC2 Security Group:
-  # EC2SecurityGr:
-  #   Type: AWS::EC2::SecurityGroup
-  #   Properties:
-  #     GroupDescription: For EC2 launch template
-  #     GroupName: UdaSG
-  #     SecurityGroupEgress: 
-  #       CidrIp: String
-  #       Description: Outbound of EC2
-  #       DestinationPrefixListId: String
-  #       DestinationSecurityGroupId: String
-  #       FromPort: Integer
-  #       IpProtocol: String
-  #       ToPort: Integer
-  #     SecurityGroupIngress: 
-  #       - Ingress
-  #     Tags: 
-  #       - Tag
-  #     VpcId: 
-  #       - Fn::ImportValue:
-  #           !Sub "${NetworkStackName}-VpcId"
+  EC2SecurityGr:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: For EC2 launch template
+      GroupName: UdaSG-EC2
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 118.68.159.144/32
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LBSG
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      Tags: 
+        - Key: Name
+          Value: UdaSG-EC2
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${NetworkStackName}-VpcId"
+
+  # ----- EC2 role access S3 bucket
+  UdaEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: UdaEC2Role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${S3Bucket}'  # Bucket ARN
+                  - !Sub 'arn:aws:s3:::${S3Bucket}/*'  # Objects in the bucket
+
 
   #----------- EC2 Launch Template
-  WebAppLaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
     Properties:
-      LaunchTemplateName: !Ref LaunchTLName
-      LaunchTemplateData:
-        InstanceType: t2.micro
-        ImageId: ami-0866a3c8686eaeeba   # ubuntu image
-        KeyName: !Ref KeyPairName
-        # SecurityGroupIds:
-        #   - # wait
-        UserData:
-          Fn::Base64: |
-            #!/bin/bash
-            apt-get update -y
-            sudo apt-get install nginx -y
-            service nginx start
+      Roles: 
+        - !Ref UdaEC2Role
+  # WebAppLaunchTemplate:
+  #   Type: AWS::EC2::LaunchTemplate
+  #   Properties:
+  #     LaunchTemplateName: !Ref LaunchTLName
+  #     LaunchTemplateData:
+  #       InstanceType: t2.micro
+  #       ImageId: ami-0866a3c8686eaeeba   # ubuntu image
+  #       KeyName: !Ref KeyPairName
+  #       IamInstanceProfile: 
+  #         Arn: !GetAtt EC2InstanceProfile.Arn
+  #       SecurityGroupIds:
+  #         - !Ref EC2SecurityGr
+  #       UserData:
+  #         Fn::Base64: |
+  #           #!/bin/bash
+  #           apt-get update -y
+  #           sudo apt-get install nginx -y
+  #           service nginx start
 
   ###------- Autoscaling Group
-  AutoScalingGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn: 
-      - WebAppLaunchTemplate
-    Properties:
-      AutoScalingGroupName: AutoScalingGroup
-      LaunchTemplate:
-        LaunchTemplateId: !Ref WebAppLaunchTemplate
-        Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
-      DesiredCapacity: 2
-      DesiredCapacityType: units
-      VPCZoneIdentifier:
-        - Fn::ImportValue:
-            !Sub "${NetworkStackName}-PrivateSubnets"
-      MaxSize: 4
-      MinSize: 2
+  # AutoScalingGroup:
+  #   Type: AWS::AutoScaling::AutoScalingGroup
+  #   DependsOn: 
+  #     - WebAppLaunchTemplate
+  #   Properties:
+  #     AutoScalingGroupName: AutoScalingGroup
+  #     LaunchTemplate:
+  #       LaunchTemplateId: !Ref WebAppLaunchTemplate
+  #       Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
+  #     DesiredCapacity: 1
+  #     DesiredCapacityType: units
+  #     VPCZoneIdentifier:
+  #       - Fn::ImportValue:
+  #           !Sub "${NetworkStackName}-PrivateSubnets"
+  #     MaxSize: 4
+  #     MinSize: 1
+  #     SecurityGroupIds: 
+  #       - !Ref EC2SecurityGr
+Outputs:
+  LoadBalancerURL:
+    Description: The URL of LoadBalancer
+    Value: !Sub "http://${LoadBalancer.DNSName}"
