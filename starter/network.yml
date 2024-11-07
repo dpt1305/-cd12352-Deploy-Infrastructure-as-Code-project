@@ -104,18 +104,30 @@ Resources:
        GatewayId: !Ref InternetGateway
 
   #---------------- Nat gatway
+  NatGW1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: IGWAttach
+    Properties:
+      Domain: vpc
   NatGW1:
     Type: AWS::EC2::NatGateway
     Properties:
-      ConnectivityType: private
+      AllocationId: !GetAtt NatGW1EIP.AllocationId
+      ConnectivityType: public
       SubnetId: !Ref PublicSubnet1
       Tags: 
         - Key: Name
           Value: NatGW1
+  NatGW2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: IGWAttach
+    Properties:
+      Domain: vpc
   NatGW2:
     Type: AWS::EC2::NatGateway
     Properties:
-      ConnectivityType: private
+      AllocationId: !GetAtt NatGW2EIP.AllocationId
+      ConnectivityType: public
       SubnetId: !Ref PublicSubnet2
       Tags: 
         - Key: Name
