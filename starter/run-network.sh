@@ -1,4 +1,4 @@
-# aws cloud formation validate-template --profile udacity --template-body file://network.yml;
+aws cloud formation validate-template --profile udacity --template-body file://network.yml;
 
 aws cloudformation create-stack \
     --profile udacity \
