@@ -30,6 +30,10 @@ Parameters:
     Description: Key pair 
     Type: String
     Default: UdagramKeyPair
+  KeyPairPublicKey:
+    Description: Public key for key pair
+    Type: String
+    Default: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKl7LnHegxxeLA+A9hBmq/sZKoPUZp5zWUtxShUzCaTP tungplatin@gmail.com
 
 
 Resources:
@@ -37,7 +41,7 @@ Resources:
   LBSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: For EC2 launch template
+      GroupDescription: SG of LoadBalancer
       GroupName: UdaSG-LB
       SecurityGroupIngress: 
         - IpProtocol: tcp
@@ -70,7 +74,54 @@ Resources:
             !Sub "${NetworkStackName}-PublicSubnet1"
         - Fn::ImportValue:
             !Sub "${NetworkStackName}-PublicSubnet2"
-      Type: application 
+      Type: application
+
+  LBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 5
+      HealthCheckPath: /
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 3
+      HealthyThresholdCount: 5
+      Name: LBTargetGroup
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      # Targets:
+      #   - Id: !Sub "${PriSubnetCidr1}"
+      #   - Id: !Sub "${PriSubnetCidr2}"
+      Tags: 
+        - Key: Name
+          Value: LBTargetGroup
+      UnhealthyThresholdCount: 5
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${NetworkStackName}-VpcId"
+          
+  LBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: 
+        - TargetGroupArn: !Ref LBTargetGroup
+          Type: forward 
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  LBListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref LBTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values: [/]
+      ListenerArn: !Ref LBListener
+      Priority: 1
 
   # --------- S3 bucket
   S3Bucket:
@@ -92,7 +143,7 @@ Resources:
     Properties:
       KeyName: !Ref KeyPairName
       KeyType: ed25519
-      PublicKeyMaterial: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKl7LnHegxxeLA+A9hBmq/sZKoPUZp5zWUtxShUzCaTP tungplatin@gmail.com
+      PublicKeyMaterial: !Ref KeyPairPublicKey
 
   #------ EC2 Security Group:
   EC2SecurityGr:
@@ -158,20 +209,32 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateName: !Ref LaunchTLName
-      LaunchTemplateData: # AZ adding
+      LaunchTemplateData:
         InstanceType: t2.micro
         ImageId: ami-0866a3c8686eaeeba   # ubuntu image
         KeyName: !Ref KeyPairName
-        IamInstanceProfile: 
+        BlockDeviceMappings:
+          - DeviceName: /dev/sdb
+            Ebs:
+              Iops: 5000
+              VolumeSize: 10
+              VolumeType: gp3
+        IamInstanceProfile:
           Name: !Ref EC2InstanceProfile
         SecurityGroupIds:
           - !Ref EC2SecurityGr
         UserData:
-          Fn::Base64: |
+          Fn::Base64: !Sub |
             #!/bin/bash
             apt-get update -y
             sudo apt-get install nginx -y
             service nginx start
+            sudo cat <<EOF > index.html
+            <h1>It works! Udagram, Udacity!<h1>
+            EOF
+            sudo cp index.html /var/www/html/index.html
+            sudo chmod 644 /var/www/html/index.html
+            sudo systemctl reload nginx
 
   # ------- Autoscaling Group
   AutoScalingGroup:
@@ -192,7 +255,9 @@ Resources:
             !Sub "${NetworkStackName}-PrivateSubnet2"
       MaxSize: 4
       MinSize: 1
-      
+      TargetGroupARNs: 
+        - !Ref LBTargetGroup
+          
 Outputs:
   LoadBalancerURL:
     Description: The URL of LoadBalancer
