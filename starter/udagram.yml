@@ -57,7 +57,7 @@ Resources:
           Value: UdaSG-LB
 
 
-  # Loadbalancer
+  # --------- Loadbalancer
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -71,9 +71,6 @@ Resources:
         - Fn::ImportValue:
             !Sub "${NetworkStackName}-PublicSubnet2"
       Type: application 
-      # Tags:
-      #   - Key: Name
-      #     Value: uda-loadbalancer
 
   # --------- S3 bucket
   S3Bucket:
@@ -95,7 +92,7 @@ Resources:
     Properties:
       KeyName: !Ref KeyPairName
       KeyType: ed25519
-      PublicKeyMaterial: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6+CWWhzU+MbQSAeAz4LCUXf8rPGbIzrAs236yigVWG tungplatin@gmail.com
+      PublicKeyMaterial: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKl7LnHegxxeLA+A9hBmq/sZKoPUZp5zWUtxShUzCaTP tungplatin@gmail.com
 
   #------ EC2 Security Group:
   EC2SecurityGr:
@@ -107,7 +104,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 118.68.159.144/32
+          CidrIp: 217.15.161.68/32
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
@@ -157,44 +154,45 @@ Resources:
     Properties:
       Roles: 
         - !Ref UdaEC2Role
-  # WebAppLaunchTemplate:
-  #   Type: AWS::EC2::LaunchTemplate
-  #   Properties:
-  #     LaunchTemplateName: !Ref LaunchTLName
-  #     LaunchTemplateData:
-  #       InstanceType: t2.micro
-  #       ImageId: ami-0866a3c8686eaeeba   # ubuntu image
-  #       KeyName: !Ref KeyPairName
-  #       IamInstanceProfile: 
-  #         Arn: !GetAtt EC2InstanceProfile.Arn
-  #       SecurityGroupIds:
-  #         - !Ref EC2SecurityGr
-  #       UserData:
-  #         Fn::Base64: |
-  #           #!/bin/bash
-  #           apt-get update -y
-  #           sudo apt-get install nginx -y
-  #           service nginx start
+  WebAppLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Ref LaunchTLName
+      LaunchTemplateData: # AZ adding
+        InstanceType: t2.micro
+        ImageId: ami-0866a3c8686eaeeba   # ubuntu image
+        KeyName: !Ref KeyPairName
+        IamInstanceProfile: 
+          Name: !Ref EC2InstanceProfile
+        SecurityGroupIds:
+          - !Ref EC2SecurityGr
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            apt-get update -y
+            sudo apt-get install nginx -y
+            service nginx start
 
-  ###------- Autoscaling Group
-  # AutoScalingGroup:
-  #   Type: AWS::AutoScaling::AutoScalingGroup
-  #   DependsOn: 
-  #     - WebAppLaunchTemplate
-  #   Properties:
-  #     AutoScalingGroupName: AutoScalingGroup
-  #     LaunchTemplate:
-  #       LaunchTemplateId: !Ref WebAppLaunchTemplate
-  #       Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
-  #     DesiredCapacity: 1
-  #     DesiredCapacityType: units
-  #     VPCZoneIdentifier:
-  #       - Fn::ImportValue:
-  #           !Sub "${NetworkStackName}-PrivateSubnets"
-  #     MaxSize: 4
-  #     MinSize: 1
-  #     SecurityGroupIds: 
-  #       - !Ref EC2SecurityGr
+  # ------- Autoscaling Group
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: 
+      - WebAppLaunchTemplate
+    Properties:
+      AutoScalingGroupName: AutoScalingGroup
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebAppLaunchTemplate
+        Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
+      DesiredCapacity: 1
+      DesiredCapacityType: units
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Sub "${NetworkStackName}-PrivateSubnet1"
+        - Fn::ImportValue:
+            !Sub "${NetworkStackName}-PrivateSubnet2"
+      MaxSize: 4
+      MinSize: 1
+      
 Outputs:
   LoadBalancerURL:
     Description: The URL of LoadBalancer
