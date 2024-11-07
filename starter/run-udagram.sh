@@ -7,5 +7,3 @@ aws cloudformation create-stack \
     --region us-east-1 \
     --parameters file://udagram-parameters.json \
     --capabilities "CAPABILITY_NAMED_IAM" ;
-
-# aws cloudformation delete-stack --profile udacity --stack-name TestStack;
